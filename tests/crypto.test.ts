@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 
 import {
   CryptoError,
+  decrypt,
   decryptString,
+  encrypt,
   encryptString,
   hash,
   hashObject,
@@ -336,5 +338,59 @@ describe("hashObject with advanced types", () => {
         const hash1 = await hashObject(obj1);
         const hash2 = await hashObject(obj2);
         expect(hash1).toBe(hash2);
+    });
+});
+
+describe("encrypt and decrypt (raw bytes)", () => {
+    const plaintext = new TextEncoder().encode("Hello, raw bytes!");
+    const secretKey = "a-very-secret-key-for-raw-bytes";
+
+    test("should encrypt and decrypt raw Uint8Array successfully", async () => {
+        const encrypted = await encrypt(plaintext, secretKey);
+        const decrypted = await decrypt(encrypted, secretKey);
+        expect(decrypted).toBeInstanceOf(Uint8Array);
+        expect(decrypted).toEqual(plaintext);
+    });
+
+    test("should fail to decrypt with a wrong secret key", async () => {
+        const wrongKey = "not-the-right-key";
+        const encrypted = await encrypt(plaintext, secretKey);
+
+        const promise = decrypt(encrypted, wrongKey);
+        await expect(promise).rejects.toThrow(CryptoError);
+        await expect(promise).rejects.toHaveProperty(
+            "code",
+            "DECRYPTION_FAILED",
+        );
+    });
+
+    test("should fail with DECRYPTION_FAILED for tampered ciphertext", async () => {
+        const encrypted = await encrypt(plaintext, secretKey);
+
+        // Flip a bit in the ciphertext part of the payload
+        encrypted[encrypted.length - 5] ^= 0xff;
+
+        const promise = decrypt(encrypted, secretKey);
+        await expect(promise).rejects.toThrow(CryptoError);
+        await expect(promise).rejects.toHaveProperty(
+            "code",
+            "DECRYPTION_FAILED",
+        );
+    });
+
+    test("should respect TTL and expire", async () => {
+        const encrypted = await encrypt(plaintext, secretKey, { ttl: 200 }); // 200ms
+
+        // Should decrypt successfully immediately
+        const decrypted = await decrypt(encrypted, secretKey);
+        expect(decrypted).toEqual(plaintext);
+
+        // Wait for TTL to expire
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        // Should fail after TTL expiry
+        const promise = decrypt(encrypted, secretKey);
+        await expect(promise).rejects.toThrow(CryptoError);
+        await expect(promise).rejects.toHaveProperty("code", "EXPIRED");
     });
 });

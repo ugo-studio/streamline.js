@@ -24,7 +24,9 @@ Built with TypeScript, it offers full type safety and is designed for seamless i
   - `areEqual`, `areNotEqual`: Deeply compare any JavaScript values.
   - `toCanonicalString`: Create a deterministic string representation of any JavaScript value.
 - Secure Cryptography:
-  - `encryptString` / `decryptString`: Modern AES-GCM encryption with a self-describing token that embeds all algorithm/KDF parameters and TTL; URL-safe (base64url) output.
+  - `encrypt` / `decrypt`: Robust AES-GCM encryption for raw binary data (`Uint8Array`).
+  - `encryptString` / `decryptString`: The same robust encryption for strings, with URL-safe base64url output.
+  - `encryptStream` / `decryptStream`: Streaming encryption and decryption for large payloads using Web Streams.
   - `hashObject`: Create a deterministic SHA-256 hash of any JavaScript value, including complex nested objects, Maps, Sets, and even structures with circular references.
 - Type-Safe: Fully written in TypeScript to provide excellent autocompletion and catch errors at compile time.
 - Seamless Chaining: `ArrayUF` methods (including native ones like `.map` and `.filter`) return an `ArrayUF` instance, allowing for elegant and readable method chaining.
@@ -458,14 +460,14 @@ console.log(omitted); // { a: 1, c: true }
 
 ### Cryptography
 
-Secure data handling built on the Web Crypto API.
+Secure data handling built on the Web Crypto API, offering string, binary, and streaming encryption.
 
-#### `encryptString(plaintext, secretKey, [options])`
+#### `encrypt(data, secretKey, [options])`
 
-Encrypts a UTF-8 string using AES-GCM and embeds a compact, authenticated header that carries all parameters required for decryption (KDF, key length, hash, salt/IV sizes, PBKDF2 iterations, and expiration). The output is base64url-encoded (URL-safe, no padding).
+Encrypts raw binary data (`BufferSource`) using a robust, headered AES-GCM format.
 
-- `plaintext`: `string` — The string to encrypt.
-- `secretKey`: `string` — The secret used for key derivation or as a raw AES key (see `kdf` below).
+- `data`: `BufferSource` — The binary data to encrypt (e.g., `Uint8Array`, `ArrayBuffer`).
+- `secretKey`: `string` — The secret for key derivation.
 - `options` (optional):
   - `ttl`: `number | null` (default: `3600000`) — Time-to-live in milliseconds. Use `null` for no expiration.
   - `kdf`: `"PBKDF2" | "HKDF" | "NONE"` (default: `"PBKDF2"`)
@@ -475,6 +477,46 @@ Encrypts a UTF-8 string using AES-GCM and embeds a compact, authenticated header
   - `keyLengthBits`: `128 | 256` (default: `256`) — AES key size; 128 is often faster.
   - `hash`: `"SHA-256" | "SHA-384" | "SHA-512"` (default: `"SHA-256"`) — Hash for PBKDF2/HKDF.
   - `pbkdf2Iterations`: `number` (default: `100000`) — Used only when `kdf` is `"PBKDF2"`.
+
+Returns: `Promise<Uint8Array>` — The encrypted data as `[header | salt | iv | ciphertext]`.
+
+See also: [`encryptString`](#encryptstringplaintext-secretkey-options) for encrypting strings, or [`encryptStream`](#encryptstreamsecretkey-options) for streaming encryption.
+
+<details>
+<summary>Example</summary>
+
+```ts
+import { encrypt, decrypt } from "usefulljs/crypto";
+
+const plaintext = new TextEncoder().encode("Hello, raw bytes!");
+const secret = "a-very-secret-key";
+
+const encrypted = await encrypt(plaintext, secret);
+const decrypted = await decrypt(encrypted, secret);
+
+console.log(new TextDecoder().decode(decrypted)); // "Hello, raw bytes!"
+```
+
+</details>
+
+#### `decrypt(encryptedBytes, secretKey)`
+
+Decrypts raw binary data from `encrypt`.
+
+- `encryptedBytes`: `BufferSource` — The encrypted byte array.
+- `secretKey`: `string` — The same secret used for encryption.
+
+Returns: `Promise<Uint8Array>` — The original plaintext bytes.
+
+See also: [`decryptString`](#decryptstringencrypteddata-secretkey) for decrypting base64url strings, or [`decryptStream`](#decryptstreamsecretkey) for streaming decryption.
+
+#### `encryptString(plaintext, secretKey, [options])`
+
+Encrypts a UTF-8 string using AES-GCM and embeds a compact, authenticated header that carries all parameters required for decryption. The output is base64url-encoded (URL-safe, no padding).
+
+- `plaintext`: `string` — The string to encrypt.
+- `secretKey`: `string` — The secret used for key derivation or as a raw AES key.
+- `options` (optional): Same options as `encrypt`.
 
 Returns: `Promise<string>` — A base64url token `[header | salt | iv | ciphertext]`.
 
@@ -534,6 +576,67 @@ import { decryptString } from "usefulljs/crypto";
 
 const decrypted = await decryptString(token, "my strong passphrase");
 console.log(decrypted);
+```
+
+</details>
+
+---
+
+### Streaming Encryption
+
+For large files or data streams, you can use Web Streams to encrypt and decrypt without buffering the entire content in memory.
+
+#### `encryptStream(secretKey, [options])`
+
+Creates a `TransformStream` that encrypts chunks of `Uint8Array` data.
+
+- `secretKey`: `string` — The secret for key derivation.
+- `options` (optional): Same options as `encrypt`.
+
+The output stream consists of a single prologue (`[header | salt | baseIV]`) followed by any number of frames (`[sequence | ciphertext_length | ciphertext]`).
+
+<details>
+<summary>Example</summary>
+
+```ts
+import { encryptStream } from "usefulljs/crypto";
+
+const response = await fetch("large-file.zip");
+const secret = "your-secret-key";
+
+const encryptedStream = response.body.pipeThrough(
+  encryptStream(secret, { kdf: "HKDF" })
+);
+
+// You can now pipe this stream elsewhere, e.g., upload it
+// await fetch('/upload', { method: 'POST', body: encryptedStream });
+```
+
+</details>
+
+#### `decryptStream(secretKey)`
+
+Creates a `TransformStream` that decrypts a stream produced by `encryptStream`.
+
+- `secretKey`: `string` — The same secret used for encryption.
+
+It correctly parses the prologue and decrypts each frame in sequence, ensuring data integrity and authenticity.
+
+<details>
+<summary>Example</summary>
+
+```ts
+import { decryptStream } from "usefulljs/crypto";
+
+const response = await fetch("/encrypted-file");
+const secret = "your-secret-key";
+
+const decryptedStream = response.body.pipeThrough(decryptStream(secret));
+
+// Consume the decrypted stream
+for await (const chunk of decryptedStream) {
+  console.log(chunk); // Uint8Array chunk of original data
+}
 ```
 
 </details>
