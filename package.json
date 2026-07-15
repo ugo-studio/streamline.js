@@ -1,77 +1,77 @@
 {
-  "name": "usefulljs",
-  "version": "1.1.8",
-  "description": "A utility module which provides straight-forward, powerful functions for working with asynchronous JavaScript",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+    "name": "usefulljs",
+    "version": "1.1.8",
+    "description": "A utility module which provides straight-forward, powerful functions for working with asynchronous JavaScript",
+    "main": "./dist/cjs/index.js",
+    "module": "./dist/esm/index.js",
+    "types": "./dist/cjs/index.d.ts",
+    "type": "module",
+    "exports": {
+        ".": {
+            "import": "./dist/esm/index.js",
+            "require": "./dist/cjs/index.js"
+        },
+        "./array": {
+            "import": "./dist/esm/lib/array.js",
+            "require": "./dist/cjs/lib/array.js"
+        },
+        "./crypto": {
+            "import": "./dist/esm/lib/crypto.js",
+            "require": "./dist/cjs/lib/crypto.js"
+        },
+        "./object": {
+            "import": "./dist/esm/lib/object.js",
+            "require": "./dist/cjs/lib/object.js"
+        },
+        "./retry": {
+            "import": "./dist/esm/lib/retry.js",
+            "require": "./dist/cjs/lib/retry.js"
+        },
+        "./singleExec": {
+            "import": "./dist/esm/lib/singleExec.js",
+            "require": "./dist/cjs/lib/singleExec.js"
+        }
     },
-    "./array": {
-      "import": "./dist/esm/lib/array.js",
-      "require": "./dist/cjs/lib/array.js"
+    "scripts": {
+        "dev": "bun --watch src/index.ts",
+        "test": "bun test",
+        "script:clear-dist": "node scripts/clear-dist-dir.js",
+        "script:exports": "node scripts/generate-exports.js",
+        "build:esm": "tsc --module esnext --outDir dist/esm",
+        "build:cjs": "tsc --module commonjs --outDir dist/cjs",
+        "build": "npm run script:clear-dist && npm run script:exports && npm run build:esm && npm run build:cjs",
+        "prepare": "npm run build",
+        "pub": "npm publish --access=public"
     },
-    "./crypto": {
-      "import": "./dist/esm/lib/crypto.js",
-      "require": "./dist/cjs/lib/crypto.js"
+    "keywords": [
+        "async",
+        "asynchronous",
+        "streamline",
+        "better",
+        "utility",
+        "useful",
+        "javascript",
+        "typescript",
+        "array",
+        "encrypt",
+        "decrypt"
+    ],
+    "homepage": "https://github.com/ugo-studio/usefulljs/",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ugo-studio/usefulljs.git"
     },
-    "./object": {
-      "import": "./dist/esm/lib/object.js",
-      "require": "./dist/cjs/lib/object.js"
+    "bugs": {
+        "url": "https://github.com/ugo-studio/usefulljs/issues"
     },
-    "./retry": {
-      "import": "./dist/esm/lib/retry.js",
-      "require": "./dist/cjs/lib/retry.js"
+    "author": "Ugochukwu David",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^24.3.0",
+        "bun-types": "^1.2.20",
+        "typescript": "^5.9.2"
     },
-    "./singleExec": {
-      "import": "./dist/esm/lib/singleExec.js",
-      "require": "./dist/cjs/lib/singleExec.js"
-    }
-  },
-  "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "test": "bun test",
-    "script:clear-dist": "node scripts/clear-dist-dir.js",
-    "script:exports": "node scripts/generate-exports.js",
-    "build:esm": "tsc --module esnext --outDir dist/esm",
-    "build:cjs": "tsc --module commonjs --outDir dist/cjs",
-    "build": "npm run script:clear-dist && npm run script:exports && npm run build:esm && npm run build:cjs",
-    "prepublishOnly": "npm run build",
-    "pub": "npm publish --access=public"
-  },
-  "keywords": [
-    "async",
-    "asynchronous",
-    "streamline",
-    "better",
-    "utility",
-    "useful",
-    "javascript",
-    "typescript",
-    "array",
-    "encrypt",
-    "decrypt"
-  ],
-  "homepage": "https://github.com/ugo-studio/usefulljs/",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ugo-studio/usefulljs.git"
-  },
-  "bugs": {
-    "url": "https://github.com/ugo-studio/usefulljs/issues"
-  },
-  "author": "Ugochukwu David",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^24.3.0",
-    "bun-types": "^1.2.20",
-    "typescript": "^5.9.2"
-  },
-  "files": [
-    "dist"
-  ]
+    "files": [
+        "dist"
+    ]
 }
