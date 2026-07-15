@@ -52,8 +52,14 @@ export interface RetryOptions<TResult> {
      * @param error The error that triggered the retry.
      * @param attempt The number of the upcoming retry attempt (e.g., 1 for the first retry).
      * @param delay The delay in milliseconds before the next attempt.
+     * @param limit The maximum number of retry attempts set in the `RetryOptions`.
      */
-    onRetry?: (error: unknown, attempt: number, delay: number) => void;
+    onRetry?: (
+        error: unknown,
+        attempt: number,
+        delay: number,
+        limit: number,
+    ) => void | PromiseLike<void>;
 }
 
 /**
@@ -96,7 +102,7 @@ export interface RetryOptions<TResult> {
  *     console.log(`Attempt ${attempt} failed. Retrying...`);
  *   },
  * });
- * 
+ *
  * console.log(data); // { data: 'Finally!' }
  * ```
  */
@@ -104,11 +110,7 @@ export async function retry<TResult>(
     taskFn: () => Promise<TResult>,
     options: RetryOptions<TResult> = {},
 ): Promise<TResult> {
-    const {
-        limit = DEFAULT_LIMIT,
-        backoff,
-        onRetry,
-    } = options;
+    const { limit = DEFAULT_LIMIT, backoff, onRetry } = options;
 
     const initialDelay = backoff?.initialDelay ?? DEFAULT_INITIAL_DELAY;
     const maxDelay = backoff?.maxDelay ?? DEFAULT_MAX_DELAY;
@@ -130,12 +132,19 @@ export async function retry<TResult>(
 
             if (typeof onRetry === "function") {
                 try {
-                    onRetry(error, attempt + 1, delay);
-                } catch (onRetryError) {
-                    console.error(
-                        "Error within onRetry callback:",
-                        onRetryError,
-                    );
+                    const currAttempt = attempt + 1;
+                    const ret = onRetry(error, currAttempt, delay, limit);
+                    if (ret instanceof Promise) await ret;
+                } catch (onRetryError: any) {
+                    if (onRetryError instanceof Error) {
+                        onRetryError.message = `Error within onRetry callback: ${onRetryError.message}`;
+                        throw onRetryError;
+                    } else {
+                        throw new Error(
+                            `Error within onRetry callback: ${onRetryError}`,
+                            { cause: onRetryError },
+                        );
+                    }
                 }
             }
 
