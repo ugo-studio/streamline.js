@@ -37,8 +37,8 @@
         "test": "bun test",
         "script:clear-dist": "node scripts/clear-dist-dir.js",
         "script:exports": "node scripts/generate-exports.js",
-        "build:esm": "tsc --module esnext --outDir dist/esm",
-        "build:cjs": "tsc --module commonjs --outDir dist/cjs",
+        "build:esm": "npx tsc --module esnext --outDir dist/esm",
+        "build:cjs": "npx tsc --module commonjs --outDir dist/cjs",
         "build": "npm run script:clear-dist && npm run script:exports && npm run build:esm && npm run build:cjs",
         "prepare": "npm run build",
         "pub": "npm publish --access=public"
